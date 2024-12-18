@@ -1,12 +1,14 @@
 using Asp.Versioning;
+using csharp_scalar.Features.Receitas.CadastrarReceita;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace csharp_scalar.Controllers.v1
 {
-    [ApiController]
     [ApiVersion("1")]
-    [Route("api/v{version:apiVersion}/[controller]")]
-    public class ProductController(ILogger<ProductController> logger) : Controller
+    public class ProductController(
+        ILogger<ProductController> logger,
+        IMediator mediator) : SharedController
     {
         /// <summary>
         /// Gera uma proposta
@@ -29,24 +31,20 @@ namespace csharp_scalar.Controllers.v1
         /// </remarks>
         /// <returns></returns>
         /// <response code="200">Retorna OK</response>
-        [HttpGet("test2")]
-        public IActionResult Index2()
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CadastrarReceitaRequest request)
         {
-            logger.LogInformation("Chegou na controller 2");
-            return Ok();
-        }
+            var command = CadastrarReceitaCommand.Criar(
+                request.Codigo,
+                request.Descricao);
 
-        /// <summary>
-        /// Gera uma proposta
-        /// </summary>
-        /// <remarks>
-        /// </remarks>
-        /// <returns></returns>
-        /// <response code="200">Retorna OK</response>
-        [HttpGet("test3")]
-        public IActionResult Index3()
-        {
-            logger.LogInformation("Chegou na controller 3");
+            if (command.IsFailure)
+                return BadRequest(command.Error);
+
+            var returns = await mediator.Send(command.Value);
+            if (returns.IsFailure)
+                return BadRequest(returns.Error);
+
             return Ok();
         }
     }

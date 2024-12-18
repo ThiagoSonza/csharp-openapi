@@ -1,8 +1,12 @@
+using System.Reflection;
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
-using Microsoft.AspNetCore.Authentication;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi.Models;
+using Hellang.Middleware.ProblemDetails;
+using Hellang.Middleware.ProblemDetails.Mvc;
 
 namespace csharp_scalar.Warmup
 {
@@ -32,6 +36,57 @@ namespace csharp_scalar.Warmup
                 services.AddOpenApi(version.GroupName, options => options.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 
             return services;
+        }
+
+        public static IServiceCollection AddRequestValidations(this IServiceCollection services)
+        {
+            services.AddFluentValidationAutoValidation();
+            services.AddFluentValidationClientsideAdapters();
+            services.AddValidatorsFromAssemblyContaining<Program>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddMediaTR(this IServiceCollection services)
+        {
+            string applicationAssemblyName = Assembly.GetExecutingAssembly().GetName().Name!;
+            var assembly = AppDomain.CurrentDomain.Load(applicationAssemblyName);
+
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly));
+
+            return services;
+        }
+
+        public static IServiceCollection AddApiProblemDetails(this IServiceCollection services)
+        {
+            services.AddProblemDetails(options =>
+            {
+                options.IncludeExceptionDetails = (ctx, ex) =>
+                {
+                    var env = ctx.RequestServices.GetRequiredService<IHostEnvironment>();
+                    return env.IsDevelopment() || env.IsStaging();
+                };
+
+                options.MapExceptionToStatusCodeWithMessage<UnauthorizedAccessException>(StatusCodes.Status401Unauthorized);
+                options.MapExceptionToStatusCodeWithMessage<ArgumentException>(StatusCodes.Status400BadRequest);
+                options.MapExceptionToStatusCodeWithMessage<ArgumentNullException>(StatusCodes.Status400BadRequest);
+                options.MapToStatusCode<NotImplementedException>(StatusCodes.Status501NotImplemented);
+                options.MapToStatusCode<HttpRequestException>(StatusCodes.Status503ServiceUnavailable);
+                options.MapToStatusCode<Exception>(StatusCodes.Status500InternalServerError);
+            })
+            .AddProblemDetailsConventions();
+
+            return services;
+        }
+
+        public static void MapExceptionToStatusCodeWithMessage<TException>(
+            this Hellang.Middleware.ProblemDetails.ProblemDetailsOptions options, int statusCode)
+            where TException : Exception
+        {
+            options.Map<TException>(ex => new StatusCodeProblemDetails(statusCode)
+            {
+                Detail = ex.Message
+            });
         }
     }
 

@@ -3,10 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace csharp_scalar.Controllers.v2
 {
-    [ApiController]
     [ApiVersion("2")]
-    [Route("api/v{version:apiVersion}/[controller]")]
-    public class ProductController(ILogger<ProductController> logger) : Controller
+    public class ProductController(ILogger<ProductController> logger) : SharedController
     {
         /// <summary>
         /// Gera uma proposta
