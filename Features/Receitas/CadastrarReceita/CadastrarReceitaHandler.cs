@@ -4,11 +4,12 @@ using MediatR;
 
 namespace csharp_scalar.Features.Receitas.CadastrarReceita
 {
-    public class CadastrarReceitaHandler : IRequestHandler<CadastrarReceitaCommand, Result<Receita>>
+    public class CadastrarReceitaHandler(ReceitaRepository repository) : IRequestHandler<CadastrarReceitaCommand, Result<Receita>>
     {
-        public Task<Result<Receita>> Handle(CadastrarReceitaCommand request, CancellationToken cancellationToken)
+        public async Task<Result<Receita>> Handle(CadastrarReceitaCommand request, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            await repository.CadatrarReceita();
+            return Result.Success(new Receita { });
         }
     }
 }

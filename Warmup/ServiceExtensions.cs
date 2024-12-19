@@ -7,6 +7,10 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi.Models;
 using Hellang.Middleware.ProblemDetails;
 using Hellang.Middleware.ProblemDetails.Mvc;
+using System.Text.Json.Serialization;
+using Autofac;
+using Autofac.Extensions.DependencyInjection;
+using ProblemDetailsOptions = Hellang.Middleware.ProblemDetails.ProblemDetailsOptions;
 
 namespace csharp_scalar.Warmup
 {
@@ -80,13 +84,31 @@ namespace csharp_scalar.Warmup
         }
 
         public static void MapExceptionToStatusCodeWithMessage<TException>(
-            this Hellang.Middleware.ProblemDetails.ProblemDetailsOptions options, int statusCode)
+            this ProblemDetailsOptions options, int statusCode)
             where TException : Exception
         {
             options.Map<TException>(ex => new StatusCodeProblemDetails(statusCode)
             {
                 Detail = ex.Message
             });
+        }
+
+        public static IServiceCollection AddApiControllers(this IServiceCollection services)
+        {
+            services.AddControllers().AddJsonOptions(options
+                => options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve);
+
+            return services;
+        }
+
+        public static IServiceCollection AddAutoFac(this IServiceCollection services, ConfigureHostBuilder host)
+        {
+            host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
+            var containerBuilder = new ContainerBuilder();
+            host.ConfigureContainer<ContainerBuilder>(builder =>
+                builder.RegisterModule<ApplicationModule>());
+
+            return services;
         }
     }
 

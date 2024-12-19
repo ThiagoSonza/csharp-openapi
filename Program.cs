@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using csharp_scalar.Warmup;
 using Hellang.Middleware.ProblemDetails;
 
@@ -10,9 +9,8 @@ builder.Services.AddEndpointsApiExplorer()
     .AddApiProblemDetails()
     .AddRequestValidations()
     .AddMediaTR()
-    .AddControllers()
-    .AddJsonOptions(options
-        => options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve);
+    .AddApiControllers()
+    .AddAutoFac(builder.Host);
 
 var app = builder.Build();
 app.UseProblemDetails();
@@ -25,3 +23,8 @@ app.UseCors(builder => builder
     .AllowAnyHeader()
     .AllowCredentials());
 app.Run();
+
+// Adicionar: 
+// 1 - telemetria
+// 3 - separar projetos
+// 4 - mensageria
