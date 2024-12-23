@@ -1,6 +1,6 @@
 using Autofac;
 
-namespace csharp_scalar.Warmup
+namespace csharp_scalar.Warmup.DependencyInjection
 {
     public class ApplicationModule : Module
     {

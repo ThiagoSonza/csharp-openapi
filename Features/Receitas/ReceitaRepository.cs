@@ -1,4 +1,4 @@
-using csharp_scalar.Warmup;
+using csharp_scalar.Warmup.DependencyInjection;
 
 namespace csharp_scalar.Features.Receitas
 {
@@ -7,7 +7,6 @@ namespace csharp_scalar.Features.Receitas
         public async Task CadatrarReceita()
         {
             await Task.CompletedTask;
-            throw new NotImplementedException();
         }
     }
 }

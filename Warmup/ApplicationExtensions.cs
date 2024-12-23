@@ -1,4 +1,4 @@
-using Scalar.AspNetCore;
+using Asp.Versioning.ApiExplorer;
 
 namespace csharp_scalar.Warmup
 {
@@ -8,18 +8,22 @@ namespace csharp_scalar.Warmup
         {
             app.MapOpenApi("/openapi/{documentName}.json");
 
-            app.MapScalarApiReference(options =>
+            var provider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+            foreach (var version in provider.ApiVersionDescriptions)
             {
-                options
-                    .WithEndpointPrefix("/scalar/{documentName}")
-                    .WithTitle("CSharp Scalar Api - {documentName}")
-                    .WithTheme(ScalarTheme.Solarized)
-                    .WithModels(false)
-                    .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
-                    .WithDarkModeToggle(false)
-                    .WithTestRequestButton(false);
-                ;
-            });
+                app.UseReDoc(options =>
+                {
+                    options.SpecUrl($"/openapi/{version.GroupName}.json");
+                    options.RoutePrefix = $"docs/{version.GroupName}";
+                    options.DocumentTitle = $"Documentação da API - Versão {version.ApiVersion}";
+                    // Expande automaticamente as respostas com código (200,201,...)
+                    options.ExpandResponses("");
+                    // Esconde o botão de download do JSON
+                    options.HideDownloadButton();
+                    options.NoAutoAuth();
+                    options.DisableSearch();
+                });
+            }
 
             return app;
         }

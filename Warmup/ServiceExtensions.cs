@@ -11,6 +11,12 @@ using System.Text.Json.Serialization;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using ProblemDetailsOptions = Hellang.Middleware.ProblemDetails.ProblemDetailsOptions;
+using csharp_scalar.Warmup.DependencyInjection;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Logs;
+using System.Diagnostics;
 
 namespace csharp_scalar.Warmup
 {
@@ -33,7 +39,7 @@ namespace csharp_scalar.Warmup
             return services;
         }
 
-        public static IServiceCollection AddAppOpenApi(this IServiceCollection services)
+        public static IServiceCollection AddOpenApiDoc(this IServiceCollection services)
         {
             var provider = services.BuildServiceProvider().GetRequiredService<IApiVersionDescriptionProvider>();
             foreach (var version in provider.ApiVersionDescriptions)
@@ -107,6 +113,53 @@ namespace csharp_scalar.Warmup
             var containerBuilder = new ContainerBuilder();
             host.ConfigureContainer<ContainerBuilder>(builder =>
                 builder.RegisterModule<ApplicationModule>());
+
+            return services;
+        }
+
+        public static IServiceCollection AddTelemetry(this IServiceCollection services, ILoggingBuilder logging)
+        {
+            var assemblyName = Assembly.GetExecutingAssembly().GetName();
+            var serviceName = assemblyName.Name!;
+            var serviceVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString()!;
+
+            var activity = new ActivitySource(serviceName);
+            services.AddSingleton(activity);
+
+            void configureResource(ResourceBuilder r) => r.AddService(
+                serviceName: serviceName,
+                serviceVersion: serviceVersion,
+                serviceInstanceId: Environment.MachineName);
+
+            services
+                .AddOpenTelemetry()
+                .ConfigureResource(configureResource)
+                .WithTracing(tracing =>
+                {
+                    tracing
+                        .AddSource(serviceName)
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddConsoleExporter()
+                        .AddOtlpExporter(opt => opt.Endpoint = new Uri("http://localhost:4317"));
+                })
+                .WithMetrics(metrics =>
+                {
+                    metrics
+                        .AddAspNetCoreInstrumentation()
+                        // .AddMeter(greeterMeter.Name)
+                        .AddMeter("Microsoft.AspNetCore.Hosting")
+                        .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
+                        .AddOtlpExporter(opt => opt.Endpoint = new Uri("http://localhost:4317"));
+                });
+
+            logging.AddOpenTelemetry(logging =>
+            {
+                logging.ParseStateValues = true;
+                logging.IncludeFormattedMessage = true;
+                logging.IncludeScopes = true;
+                logging.AddOtlpExporter(opt => opt.Endpoint = new Uri("http://localhost:4317"));
+            });
 
             return services;
         }

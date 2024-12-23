@@ -5,12 +5,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer()
     .AddRouting(opt => opt.LowercaseUrls = true)
     .AddVersioning()
-    .AddAppOpenApi()
+    .AddOpenApiDoc()
     .AddApiProblemDetails()
     .AddRequestValidations()
     .AddMediaTR()
     .AddApiControllers()
-    .AddAutoFac(builder.Host);
+    .AddAutoFac(builder.Host)
+    .AddTelemetry(builder.Logging);
 
 var app = builder.Build();
 app.UseProblemDetails();
@@ -24,7 +25,6 @@ app.UseCors(builder => builder
     .AllowCredentials());
 app.Run();
 
-// Adicionar: 
-// 1 - telemetria
+// Adicionar:
 // 3 - separar projetos
 // 4 - mensageria
