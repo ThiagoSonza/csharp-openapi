@@ -17,6 +17,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Logs;
 using System.Diagnostics;
+using csharp_scalar.Warmup.Settings;
 
 namespace csharp_scalar.Warmup
 {
@@ -117,8 +118,10 @@ namespace csharp_scalar.Warmup
             return services;
         }
 
-        public static IServiceCollection AddTelemetry(this IServiceCollection services, ILoggingBuilder logging)
+        public static IServiceCollection AddTelemetry(this IServiceCollection services, ILoggingBuilder logging, IConfiguration configuration)
         {
+            var config = configuration.GetSection(nameof(Configurations)).Get<Configurations>()!;
+
             var assemblyName = Assembly.GetExecutingAssembly().GetName();
             var serviceName = assemblyName.Name!;
             var serviceVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString()!;
@@ -141,7 +144,7 @@ namespace csharp_scalar.Warmup
                         .AddAspNetCoreInstrumentation()
                         .AddHttpClientInstrumentation()
                         .AddConsoleExporter()
-                        .AddOtlpExporter(opt => opt.Endpoint = new Uri("http://localhost:4317"));
+                        .AddOtlpExporter(opt => opt.Endpoint = new Uri(config.Telemetry.Exporter));
                 })
                 .WithMetrics(metrics =>
                 {
@@ -150,7 +153,7 @@ namespace csharp_scalar.Warmup
                         // .AddMeter(greeterMeter.Name)
                         .AddMeter("Microsoft.AspNetCore.Hosting")
                         .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
-                        .AddOtlpExporter(opt => opt.Endpoint = new Uri("http://localhost:4317"));
+                        .AddOtlpExporter(opt => opt.Endpoint = new Uri(config.Telemetry.Exporter));
                 });
 
             logging.AddOpenTelemetry(logging =>
@@ -158,7 +161,7 @@ namespace csharp_scalar.Warmup
                 logging.ParseStateValues = true;
                 logging.IncludeFormattedMessage = true;
                 logging.IncludeScopes = true;
-                logging.AddOtlpExporter(opt => opt.Endpoint = new Uri("http://localhost:4317"));
+                logging.AddOtlpExporter(opt => opt.Endpoint = new Uri(config.Telemetry.Exporter));
             });
 
             return services;

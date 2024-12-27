@@ -11,20 +11,16 @@ builder.Services.AddEndpointsApiExplorer()
     .AddMediaTR()
     .AddApiControllers()
     .AddAutoFac(builder.Host)
-    .AddTelemetry(builder.Logging);
+    .AddTelemetry(builder.Logging, builder.Configuration);
 
 var app = builder.Build();
 app.UseProblemDetails();
 app.UseOpenApi();
 app.MapControllers();
 app.UseHttpsRedirection();
-app.UseCors(builder => builder
-    .SetIsOriginAllowed(origin => true)
-    .AllowAnyMethod()
-    .AllowAnyHeader()
-    .AllowCredentials());
+app.UseCustomCors();
 app.Run();
 
 // Adicionar:
-// 3 - separar projetos
-// 4 - mensageria
+// 2 - separar projetos
+// 3 - mensageria

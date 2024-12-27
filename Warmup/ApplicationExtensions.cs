@@ -27,5 +27,17 @@ namespace csharp_scalar.Warmup
 
             return app;
         }
+
+        public static WebApplication UseCustomCors(this WebApplication app)
+        {
+            app.UseCors(builder => builder
+                .SetIsOriginAllowed(origin => true)
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials());
+
+            return app;
+
+        }
     }
 }
