@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using csharp_scalar.Warmup.DependencyInjection;
 using csharp_scalar.Warmup.Telemetry;
+using Microsoft.Extensions.Logging;
 
 namespace csharp_scalar.Features.Receitas.CadastrarReceita
 {

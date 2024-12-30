@@ -22,5 +22,6 @@ app.UseCustomCors();
 app.Run();
 
 // Adicionar:
-// 2 - separar projetos
+// 1 - output cache
+// 2 - C4 model
 // 3 - mensageria

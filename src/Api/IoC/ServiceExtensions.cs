@@ -18,6 +18,7 @@ using OpenTelemetry.Trace;
 using OpenTelemetry.Logs;
 using System.Diagnostics;
 using csharp_scalar.Warmup.Settings;
+using Features.Ambiente;
 
 namespace csharp_scalar.Warmup
 {
@@ -53,7 +54,7 @@ namespace csharp_scalar.Warmup
         {
             services.AddFluentValidationAutoValidation();
             services.AddFluentValidationClientsideAdapters();
-            services.AddValidatorsFromAssemblyContaining<Program>();
+            services.AddValidatorsFromAssemblyContaining<Ambiente>();
 
             return services;
         }
@@ -63,7 +64,11 @@ namespace csharp_scalar.Warmup
             string applicationAssemblyName = Assembly.GetExecutingAssembly().GetName().Name!;
             var assembly = AppDomain.CurrentDomain.Load(applicationAssemblyName);
 
-            services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly));
+            services.AddMediatR(cfg
+                => cfg.RegisterServicesFromAssemblies(
+                    typeof(Program).Assembly,
+                    typeof(Ambiente).Assembly)
+            );
 
             return services;
         }
