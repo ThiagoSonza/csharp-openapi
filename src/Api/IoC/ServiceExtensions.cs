@@ -19,6 +19,7 @@ using OpenTelemetry.Logs;
 using System.Diagnostics;
 using csharp_scalar.Warmup.Settings;
 using Features.Ambiente;
+using Api.IoC;
 
 namespace csharp_scalar.Warmup
 {
@@ -167,6 +168,28 @@ namespace csharp_scalar.Warmup
                 logging.IncludeFormattedMessage = true;
                 logging.IncludeScopes = true;
                 logging.AddOtlpExporter(opt => opt.Endpoint = new Uri(config.Telemetry.Exporter));
+            });
+
+            return services;
+        }
+
+        public static IServiceCollection AddCaching(this IServiceCollection services, IConfiguration configuration)
+        {
+            var assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
+
+            services.AddOutputCache(options =>
+            {
+                options.AddBasePolicy(builder =>
+                {
+                    builder.Expire(TimeSpan.FromSeconds(180));
+                    builder.AddPolicy<OutputCachePolicy>();
+                }, true);
+            });
+
+            services.AddStackExchangeRedisOutputCache(options =>
+            {
+                options.Configuration = configuration.GetConnectionString("RedisCacheConnection");
+                options.InstanceName = assemblyName;
             });
 
             return services;
