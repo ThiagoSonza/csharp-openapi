@@ -4,6 +4,7 @@ using Hellang.Middleware.ProblemDetails;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer()
     .AddCaching(builder.Configuration)
+    .AddRateLimit(builder.Configuration)
     .AddRouting(opt => opt.LowercaseUrls = true)
     .AddVersioning()
     .AddOpenApiDoc()
@@ -19,6 +20,7 @@ app.UseProblemDetails();
 app.UseOpenApi();
 app.MapControllers();
 app.UseOutputCache();
+app.UseRateLimiter();
 app.UseHttpsRedirection();
 app.UseCustomCors();
 app.Run();

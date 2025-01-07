@@ -20,6 +20,9 @@ using System.Diagnostics;
 using csharp_scalar.Warmup.Settings;
 using Features.Ambiente;
 using Api.IoC;
+using System.Threading.RateLimiting;
+using System.Net;
+using System.Globalization;
 
 namespace csharp_scalar.Warmup
 {
@@ -194,6 +197,108 @@ namespace csharp_scalar.Warmup
 
             return services;
         }
+
+        public static IServiceCollection AddRateLimit(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddRateLimiter(limiterOptions =>
+            {
+                limiterOptions.OnRejected = (context, cancellationToken) =>
+                {
+                    if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                    {
+                        context.HttpContext.Response.Headers.RetryAfter =
+                            ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
+                    }
+
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    context.HttpContext.RequestServices.GetService<ILoggerFactory>()?
+                        .CreateLogger("Microsoft.AspNetCore.RateLimitingMiddleware")
+                        .LogWarning("OnRejected: {GetUserEndPoint}", GetUserEndPoint(context.HttpContext));
+
+                    return new ValueTask();
+                };
+
+                limiterOptions.AddPolicy("concurrency", context =>
+                {
+                    var routeData = context.Request.HttpContext.GetRouteData();
+                    var controllerName = routeData.Values["controller"]?.ToString();
+                    var actionName = routeData.Values["action"]?.ToString();
+
+                    var policyName = $"{controllerName}.{actionName}";
+
+                    return RateLimitPartition.GetConcurrencyLimiter(policyName,
+                        _ => new ConcurrencyLimiterOptions
+                        {
+                            PermitLimit = 10,
+                            QueueLimit = 20,
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                        });
+                });
+
+                limiterOptions.AddPolicy("slide", context =>
+                {
+                    var username = context.User.Identity?.IsAuthenticated is true
+                        ? context.User.ToString()!
+                        : "anonymous user";
+
+                    return RateLimitPartition.GetSlidingWindowLimiter(username,
+                        _ => new SlidingWindowRateLimiterOptions
+                        {
+                            PermitLimit = 5, // Permite até 5 requisições dentro de cada janela
+                            Window = TimeSpan.FromSeconds(30), // Define uma janela de 30 segundos para distribuir as requisições
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 5, // Permite colocar até 5 requisições em espera antes de rejeitar novas requisições.
+                            SegmentsPerWindow = 6 // Divide a janela de 30 segundos em 6 segmentos de 5 segundos para suavizar o controle de taxa e permitir pequenos picos.
+                        });
+                });
+
+                limiterOptions.AddPolicy("tokenbucket", partitioner: httpContext =>
+                {
+                    string userName = httpContext.User.Identity?.Name ?? string.Empty;
+
+                    return RateLimitPartition.GetTokenBucketLimiter(userName, _ =>
+                        new TokenBucketRateLimiterOptions
+                        {
+                            TokenLimit = 10, // Permite até 10 requisições simultâneas
+                            QueueLimit = 20, // Permite até 20 requisições extras na fila
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            ReplenishmentPeriod = TimeSpan.FromSeconds(5), // Tokens são reabastecidos a cada 5 segundos
+                            TokensPerPeriod = 5, // Adiciona 5 tokens por período, o que acomoda fluxos de navegação
+                            AutoReplenishment = true // Garante que tokens são adicionados automaticamente ao longo do tempo.
+                        });
+                });
+
+                limiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, IPAddress>(context =>
+                {
+                    IPAddress? remoteIpAddress = context.Connection.RemoteIpAddress;
+
+                    if (!IPAddress.IsLoopback(remoteIpAddress!))
+                    {
+                        return RateLimitPartition.GetFixedWindowLimiter(remoteIpAddress!, _ =>
+                        {
+                            return new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit = 2,
+                                Window = TimeSpan.FromSeconds(10),
+                                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                                QueueLimit = 0
+                            };
+                        });
+                    }
+
+                    return RateLimitPartition.GetNoLimiter(IPAddress.Loopback);
+                });
+            });
+
+            return services;
+        }
+
+        static string GetUserEndPoint(HttpContext context)
+            => $"User {context.User.Identity?.Name ?? "Anonymous"} " +
+                $"Endpoint:{context.Request.Path} " +
+                $"IP Address:{context.Connection.RemoteIpAddress}";
+
+        static string GetTicks() => (DateTime.Now.Ticks & 0x11111).ToString("00000");
     }
 
     internal sealed class BearerSecuritySchemeTransformer() : IOpenApiDocumentTransformer
