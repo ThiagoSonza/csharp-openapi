@@ -23,11 +23,21 @@ using Api.IoC;
 using System.Threading.RateLimiting;
 using System.Net;
 using System.Globalization;
+using csharp_scalar.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace csharp_scalar.Warmup
 {
     public static class ServiceExtensions
     {
+        public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.AddDbContext<ReceitaContext>(options
+                => options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+
+            return services;
+        }
+
         public static IServiceCollection AddVersioning(this IServiceCollection services)
         {
             services.AddApiVersioning(config =>
