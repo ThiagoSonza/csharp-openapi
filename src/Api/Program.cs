@@ -3,6 +3,7 @@ using Hellang.Middleware.ProblemDetails;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer()
+    .AddDatabase(builder.Configuration)
     .AddCaching(builder.Configuration)
     .AddRateLimit(builder.Configuration)
     .AddRouting(opt => opt.LowercaseUrls = true)
@@ -26,6 +27,8 @@ app.UseCustomCors();
 app.Run();
 
 // Adicionar:
-// 1 - Autenticação
-// 2 - C4 model
-// 3 - mensageria
+// C4 model
+
+// Autenticação
+// Mensageria
+// Hangfire
